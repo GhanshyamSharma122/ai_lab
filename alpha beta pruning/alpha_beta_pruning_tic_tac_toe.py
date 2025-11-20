@@ -55,17 +55,26 @@ class TicTacToe:
         return False
 
 # --- Minimax Algorithm ---
-def minimax(state, player, tree_nodes, depth=0, parent_id=None):
+def minimax(state, player, tree_nodes, depth=0, parent_id=None, alpha=-math.inf, beta=math.inf):
+    """
+    Minimax with alpha-beta pruning.
+
+    Args:
+        state: TicTacToe board state
+        player: current player ('X' or 'O')
+        tree_nodes: list to record explored nodes for visualization
+        depth: current depth in the tree
+        parent_id: id of parent node in tree_nodes
+        alpha: best already explored option along path to maximizer
+        beta: best already explored option along path to minimizer
+
+    Returns:
+        dict with 'position' and 'score'
+    """
     max_player = 'X'  # Our AI player
-    other_player = 'O'
+    other_player = 'O'  # Opponent of the AI (used for terminal scoring)
 
-    if player == other_player:
-        # The opponent is trying to minimize the score
-        best = {'position': None, 'score': math.inf}
-    else:
-        # Our AI is trying to maximize the score
-        best = {'position': None, 'score': -math.inf}
-
+    # Terminal states
     if state.current_winner == max_player:
         return {'position': None, 'score': 1 * (state.num_empty_squares() + 1)}
     elif state.current_winner == other_player:
@@ -73,31 +82,46 @@ def minimax(state, player, tree_nodes, depth=0, parent_id=None):
     elif not state.empty_squares():
         return {'position': None, 'score': 0}
 
+    # Initialize best
+    if player == max_player:
+        best = {'position': None, 'score': -math.inf}
+    else:
+        best = {'position': None, 'score': math.inf}
+
     current_node_id = len(tree_nodes)
     tree_nodes.append({'id': current_node_id, 'board': list(state.board), 'player': player, 'depth': depth, 'parent': parent_id, 'score': None})
 
+    # Determine the next player
+    next_player = other_player if player == max_player else max_player
+
     for possible_move in state.available_moves():
-        # Simulate a move
+        # Simulate move
         new_state = TicTacToe()
         new_state.board = list(state.board)
         new_state.make_move(possible_move, player)
 
-        # Recurse
-        sim_score = minimax(new_state, other_player if player == max_player else max_player, tree_nodes, depth + 1, current_node_id)
+        # Recurse with alpha-beta
+        sim_score = minimax(new_state, next_player, tree_nodes, depth + 1, current_node_id, alpha, beta)
 
-        # Update the best move
+        # Update best and alpha/beta
         if player == max_player:
             if sim_score['score'] > best['score']:
                 best['score'] = sim_score['score']
                 best['position'] = possible_move
+            alpha = max(alpha, best['score'])
         else:
             if sim_score['score'] < best['score']:
                 best['score'] = sim_score['score']
                 best['position'] = possible_move
-    
+            beta = min(beta, best['score'])
+
+        # Alpha-beta pruning
+        if beta <= alpha:
+            break
+
     # Update the score of the current node in the tree
     tree_nodes[current_node_id]['score'] = best['score']
-    
+
     return best
 
 # --- Game Play ---
